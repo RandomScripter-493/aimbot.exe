@@ -1,0 +1,57 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+
+local localPlayer = Players.LocalPlayer
+local camera = workspace.CurrentCamera
+local mouse = localPlayer:GetMouse()
+
+local FOV_RADIUS = 40
+local AIM_STRENGTH = 1.0
+local SHOW_FOV_CIRCLE = true
+
+local fovCircle = Drawing.new("Circle")
+fovCircle.Visible = SHOW_FOV_CIRCLE
+fovCircle.Color = Color3.fromRGB(255, 255, 255)
+fovCircle.Thickness = 1
+fovCircle.NumSides = 64
+fovCircle.Radius = FOV_RADIUS
+fovCircle.Filled = false
+
+local function getClosestTarget()
+	local closest = nil
+	local shortestDist = math.huge
+
+	for _, player in ipairs(Players:GetPlayers()) do
+		if player ~= localPlayer and player.Character and player.Character:FindFirstChild("Head") then
+			local head = player.Character.Head
+			local screenPoint, onScreen = camera:WorldToViewportPoint(head.Position)
+			if onScreen then
+				local dist = (Vector2.new(screenPoint.X, screenPoint.Y) - Vector2.new(mouse.X, mouse.Y)).Magnitude
+				if dist < shortestDist and dist <= FOV_RADIUS then
+					shortestDist = dist
+					closest = head
+				end
+			end
+		end
+	end
+
+	return closest
+end
+
+local function aimAt(targetPart, strength)
+	local screenPoint, onScreen = camera:WorldToViewportPoint(targetPart.Position)
+	if onScreen then
+		local dx = screenPoint.X - mouse.X
+		local dy = screenPoint.Y - mouse.Y
+		mousemoverel(dx * strength, dy * strength)
+	end
+end
+
+RunService.RenderStepped:Connect(function()
+	fovCircle.Position = Vector2.new(mouse.X, mouse.Y)
+	local target = getClosestTarget()
+	if target and UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2) then
+		aimAt(target, AIM_STRENGTH)
+	end
+end)
